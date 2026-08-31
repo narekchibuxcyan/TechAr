@@ -1,0 +1,2 @@
+source /home/narek/my-safe-website/esp32/iot-dev/build/gdbinit/symbols
+source /home/narek/my-safe-website/esp32/iot-dev/build/gdbinit/connect

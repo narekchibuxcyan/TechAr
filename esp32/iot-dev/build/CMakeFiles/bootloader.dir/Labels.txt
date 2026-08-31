@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+/home/narek/my-safe-website/esp32/iot-dev/build/CMakeFiles/bootloader
+/home/narek/my-safe-website/esp32/iot-dev/build/CMakeFiles/bootloader.rule
+/home/narek/my-safe-website/esp32/iot-dev/build/CMakeFiles/bootloader-complete.rule
+/home/narek/my-safe-website/esp32/iot-dev/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+/home/narek/my-safe-website/esp32/iot-dev/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+/home/narek/my-safe-website/esp32/iot-dev/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+/home/narek/my-safe-website/esp32/iot-dev/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+/home/narek/my-safe-website/esp32/iot-dev/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+/home/narek/my-safe-website/esp32/iot-dev/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+/home/narek/my-safe-website/esp32/iot-dev/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule

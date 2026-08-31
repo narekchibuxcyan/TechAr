@@ -1,0 +1,16 @@
+{
+  "name": "iot-device-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "Standalone script that mimics a physical IoT device (e.g. an ESP32) talking to the platform's Express API over HTTP.",
+  "scripts": {
+    "start": "tsx simulator.ts",
+    "dev": "tsx watch simulator.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.15",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.4"
+  }
+}

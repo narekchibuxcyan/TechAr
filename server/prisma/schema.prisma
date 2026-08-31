@@ -1,0 +1,283 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["omitApi"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Users & Auth ----------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  BANNED
+}
+
+enum OtpPurpose {
+  REGISTRATION
+  PASSWORD_RESET
+}
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  fullName     String
+  role         Role       @default(USER)
+  status       UserStatus @default(PENDING)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  lastLoginAt  DateTime?
+
+  otpCodes  OtpCode[]
+  sessions  Session[]
+  devices   Device[]      @relation("DeviceOwner")
+  orders    Order[]
+  auditLogs AuditLog[]    @relation("ActorAuditLogs")
+
+  @@index([status])
+  @@index([role])
+}
+
+model OtpCode {
+  id         String     @id @default(uuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash   String
+  purpose    OtpPurpose @default(REGISTRATION)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  attempts   Int        @default(0)
+  createdAt  DateTime   @default(now())
+
+  @@index([userId, purpose])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  userAgent String?
+  ipAddress String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------- Devices ----------
+
+enum DeviceStatus {
+  ONLINE
+  OFFLINE
+  DISABLED
+}
+
+enum ConnectionEvent {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+  FORCED_STATE_CHANGE
+}
+
+model Device {
+  id               String    @id @default(uuid())
+  serialNumber     String    @unique
+  name             String
+  model            String
+  hardwareRevision String?
+  ownerId          String?
+  owner            User?     @relation("DeviceOwner", fields: [ownerId], references: [id])
+  status           DeviceStatus @default(OFFLINE)
+  lastSeenAt       DateTime?
+  firmwareVersion  String?
+  settings         Json?
+  registeredAt     DateTime  @default(now())
+  createdByAdminId String?
+
+  // Hash of the credential a physical device (or the simulator) presents via
+  // the X-Device-Key header to authenticate against /api/device-agent/*. The
+  // raw key is only ever returned once, at registration time — see
+  // POST /api/admin/devices. Never selected back out to any client.
+  apiKeyHash       String?   @unique
+
+  telemetry      DeviceTelemetry[]
+  connectionLogs DeviceConnectionLog[]
+  updateJobs     FirmwareUpdateJob[]
+
+  @@index([ownerId])
+  @@index([status])
+}
+
+model DeviceTelemetry {
+  id         String   @id @default(uuid())
+  deviceId   String
+  device     Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  metric     String
+  value      Float
+  unit       String?
+  recordedAt DateTime @default(now())
+
+  @@index([deviceId, recordedAt])
+}
+
+model DeviceConnectionLog {
+  id         String          @id @default(uuid())
+  deviceId   String
+  device     Device          @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  event      ConnectionEvent
+  ipAddress  String?
+  detail     String?
+  occurredAt DateTime        @default(now())
+
+  @@index([deviceId, occurredAt])
+}
+
+// ---------- Firmware / OTA ----------
+
+enum OtaStatus {
+  SCHEDULED
+  IN_PROGRESS
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+model Firmware {
+  id             String   @id @default(uuid())
+  version        String
+  model          String
+  filePath       String
+  checksumSha256 String
+  fileSizeBytes  Int
+  uploadedById   String
+  createdAt      DateTime @default(now())
+
+  updateJobs FirmwareUpdateJob[]
+
+  @@unique([model, version])
+}
+
+model FirmwareUpdateJob {
+  id           String    @id @default(uuid())
+  firmwareId   String
+  firmware     Firmware  @relation(fields: [firmwareId], references: [id])
+  deviceId     String
+  device       Device    @relation(fields: [deviceId], references: [id])
+  status       OtaStatus @default(SCHEDULED)
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  errorMessage String?
+  createdById  String
+  createdAt    DateTime  @default(now())
+
+  @@index([deviceId, status])
+}
+
+// ---------- Sales / Storefront ----------
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Product {
+  id            String        @id @default(uuid())
+  title         String
+  description   String
+  priceCents    Int
+  stockQuantity Int           @default(0)
+  imageUrl      String?
+  // Array of { label, value } technical spec rows, e.g. [{ "label": "Battery", "value": "5000mAh" }].
+  specs         Json?
+  status        ProductStatus @default(DRAFT)
+  createdById   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  // Soft delete: excluded from every query (admin + public) once set, but
+  // kept for audit/history rather than physically removed.
+  deletedAt     DateTime?
+
+  @@index([status])
+}
+
+// ---------- Orders ----------
+
+enum OrderStatus {
+  AWAITING_CONFIRMATION
+  CONFIRMED
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id         String      @id @default(uuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  status     OrderStatus @default(AWAITING_CONFIRMATION)
+  totalCents Int
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id             String @id @default(uuid())
+  orderId        String
+  order          Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productName    String
+  quantity       Int
+  unitPriceCents Int
+}
+
+model OrderStatusHistory {
+  id          String      @id @default(uuid())
+  orderId     String
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      OrderStatus
+  changedById String?
+  changedAt   DateTime    @default(now())
+  note        String?
+
+  @@index([orderId])
+}
+
+// ---------- Misc ----------
+
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+  handled   Boolean  @default(false)
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actor      User?    @relation("ActorAuditLogs", fields: [actorId], references: [id])
+  action     String
+  targetType String
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+}

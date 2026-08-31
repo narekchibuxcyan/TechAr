@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: #090d16;
+  }
+
+  /* Thin, dark-friendly scrollbars for the drawers/tables. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.35);
+    border-radius: 9999px;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-2xl border border-gray-800/60 bg-white/[0.03] backdrop-blur-xl;
+  }
+}
